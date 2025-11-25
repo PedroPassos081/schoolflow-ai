@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 
 function getInitials(name?: string | null, email?: string | null) {
   const base = name && name.trim().length > 0 ? name : email ?? "";
@@ -19,7 +20,32 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const user = session.user;
+  const user = session.user as {
+    name?: string | null;
+    email?: string | null;
+    role?: "ADMIN" | "TEACHER" | "PARENT";
+  };
+
+  // métricas para admin
+  let adminMetrics: {
+    totalStudents: number;
+    totalClasses: number;
+    riskStudents: number;
+  } | null = null;
+
+  if (user.role === "ADMIN") {
+    const [totalStudents, totalClasses, riskStudents] = await Promise.all([
+      prisma.student.count(),
+      prisma.class.count(),
+      prisma.grade.count({
+        where: {
+          value: { lt: 6 }, // alunos "em risco" com nota < 6
+        },
+      }),
+    ]);
+
+    adminMetrics = { totalStudents, totalClasses, riskStudents };
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-50">
@@ -34,7 +60,8 @@ export default async function DashboardPage() {
               Painel da escola
             </h1>
             <p className="mt-1 text-sm text-slate-300">
-              Bem-vindo(a), <span className="font-medium">{user.name}</span>.{" "}
+              Bem-vindo(a),{" "}
+              <span className="font-medium">{user.name ?? user.email}</span>.{" "}
               Aqui é onde você acompanha tudo o que importa no seu dia a dia.
             </p>
           </div>
@@ -73,27 +100,34 @@ export default async function DashboardPage() {
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <div className="rounded-xl border border-white/10 bg-black/10 px-3 py-3">
                     <p className="text-xs text-slate-300">Alunos ativos</p>
-                    <p className="mt-1 text-2xl font-semibold">—</p>
+                    <p className="mt-1 text-2xl font-semibold">
+                      {adminMetrics ? adminMetrics.totalStudents : "—"}
+                    </p>
                     <p className="mt-1 text-[11px] text-slate-400">
-                      Em breve: integração com o banco de dados.
+                      Total de estudantes cadastrados no sistema.
                     </p>
                   </div>
+
                   <div className="rounded-xl border border-white/10 bg-black/10 px-3 py-3">
                     <p className="text-xs text-slate-300">Turmas</p>
-                    <p className="mt-1 text-2xl font-semibold">—</p>
+                    <p className="mt-1 text-2xl font-semibold">
+                      {adminMetrics ? adminMetrics.totalClasses : "—"}
+                    </p>
                     <p className="mt-1 text-[11px] text-slate-400">
                       Resumo das turmas cadastradas.
                     </p>
                   </div>
+
                   <div className="rounded-xl border border-white/10 bg-black/10 px-3 py-3">
                     <p className="text-xs text-slate-300">
                       Alertas da inteligência
                     </p>
                     <p className="mt-1 text-2xl font-semibold text-amber-300">
-                      —
+                      {adminMetrics ? adminMetrics.riskStudents : "—"}
                     </p>
                     <p className="mt-1 text-[11px] text-slate-400">
-                      Sinais de queda de desempenho ou risco de evasão.
+                      Alunos com nota abaixo de 6, que podem precisar de
+                      atenção.
                     </p>
                   </div>
                 </div>

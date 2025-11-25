@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url  = env("DATABASE_URL")
 }
 
 enum Role {
@@ -21,4 +21,56 @@ model User {
   role      Role     @default(PARENT)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  teacherClasses Class[] @relation("TeacherClasses")
+}
+
+
+model Class {
+  id        String       @id @default(cuid())
+  name      String
+  year      Int
+  teacher   User         @relation("TeacherClasses", fields: [teacherId], references: [id])
+  teacherId String
+  students  Enrollment[]
+  grades    Grade[]      // 👈 lado inverso da relação com Grade
+  createdAt DateTime     @default(now())
+}
+
+
+model Student {
+  id        String       @id @default(cuid())
+  name      String
+  createdAt DateTime     @default(now())
+  enrollments Enrollment[]
+  grades    Grade[]
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  student   Student  @relation(fields: [studentId], references: [id])
+  studentId String
+  class     Class    @relation(fields: [classId], references: [id])
+  classId   String
+  createdAt DateTime @default(now())
+}
+
+model Subject {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  grades    Grade[]
+}
+
+model Grade {
+  id         String   @id @default(cuid())
+  student    Student  @relation(fields: [studentId], references: [id])
+  studentId  String
+  subject    Subject  @relation(fields: [subjectId], references: [id])
+  subjectId  String
+  class      Class    @relation(fields: [classId], references: [id])
+  classId    String
+  value      Float
+  term       Int      // bimestre / trimestre
+  createdAt  DateTime @default(now())
 }
