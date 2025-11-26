@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 
 function getInitials(name?: string | null, email?: string | null) {
   const base = name && name.trim().length > 0 ? name : email ?? "";
@@ -214,9 +215,12 @@ export default async function DashboardPage() {
               <div className="mt-4 space-y-2 text-sm">
                 {user.role === "ADMIN" && (
                   <>
-                    <button className="w-full rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-left font-medium text-emerald-100 transition hover:bg-emerald-500/20">
+                    <Link
+                      href="/classes"
+                      className="block w-full rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-left font-medium text-emerald-100 transition hover:bg-emerald-500/20"
+                    >
                       + Cadastrar nova turma
-                    </button>
+                    </Link>
                     <button className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-left text-slate-100 transition hover:bg-black/30">
                       Ver relatórios da IA
                     </button>
