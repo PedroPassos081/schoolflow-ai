@@ -54,7 +54,7 @@ export default async function DashboardPage() {
         <header className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400">
-              Luma Class
+              Luma Agenda
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight lg:text-3xl">
               Painel da escola
@@ -258,7 +258,7 @@ export default async function DashboardPage() {
 
             <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs text-emerald-100 backdrop-blur">
               <p className="font-semibold text-[11px] uppercase tracking-[0.18em]">
-                Próximos passos do Luma Class
+                Próximos passos do Luma Agenda
               </p>
               <p className="mt-2 text-[13px] leading-relaxed">
                 Esta é a primeira versão do painel. Em breve, você verá
