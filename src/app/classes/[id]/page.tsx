@@ -103,10 +103,56 @@ async function removeStudentFromClass(formData: FormData) {
   revalidatePath(`/classes/${classId}`);
 }
 
+// SERVER ACTION – registrar nota para um aluno da turma
+async function addGradeToStudent(formData: FormData) {
+  "use server";
+
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    redirect("/login");
+  }
+
+  const user = session.user as {
+    id?: string | null;
+    role?: "ADMIN" | "TEACHER" | "PARENT";
+  };
+
+  // Só ADMIN e TEACHER podem lançar nota
+  if (user.role !== "ADMIN" && user.role !== "TEACHER") {
+    throw new Error("Only admins or teachers can add grades");
+  }
+
+  const classId = String(formData.get("classId") || "").trim();
+  const studentId = String(formData.get("studentId") || "").trim();
+  const subject = String(formData.get("subject") || "").trim();
+  const valueRaw = String(formData.get("value") || "").replace(",", ".");
+  const value = Number(valueRaw);
+
+  // Captura o Bimestre (term) do formulário
+  const termRaw = formData.get("term");
+  const term = termRaw ? Number(termRaw) : 1;
+
+  if (!classId || !studentId || !subject || Number.isNaN(value)) {
+    throw new Error("Missing or invalid fields");
+  }
+
+  await prisma.grade.create({
+    data: {
+      classId,
+      studentId,
+      subjectId: subject, // CORRIGIDO: Usa subjectId para passar o ID
+      value,
+      term: term, // CORRIGIDO: Passa o bimestre capturado
+    },
+  });
+
+  revalidatePath(`/classes/${classId}`);
+}
+
 export default async function ClassDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>; // 1. Mude o tipo para Promise
+  params: Promise<{ id: string }>;
 }) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
@@ -149,6 +195,10 @@ export default async function ClassDetailPage({
         orderBy: { student: { name: "asc" } },
       },
     },
+  });
+
+  const subjects = await prisma.subject.findMany({
+    orderBy: { name: "asc" },
   });
 
   if (!cls) {
@@ -254,7 +304,8 @@ export default async function ClassDetailPage({
                       </td>
 
                       {isAdminOrTeacher && (
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right align-top">
+                          {/* Remover aluno */}
                           <form action={removeStudentFromClass}>
                             <input
                               type="hidden"
@@ -268,9 +319,75 @@ export default async function ClassDetailPage({
                             />
                             <button
                               type="submit"
-                              className="text-xs text-red-300 hover:text-red-200 underline underline-offset-2"
+                              className="text-xs text-red-300 hover:text-red-200 underline underline-offset-2 mb-2"
                             >
                               Remover
+                            </button>
+                          </form>
+
+                          {/* Lançar nota */}
+                          <form
+                            action={addGradeToStudent}
+                            className="mt-2 flex flex-col gap-2 text-xs text-slate-900"
+                          >
+                            <input
+                              type="hidden"
+                              name="classId"
+                              value={cls.id}
+                            />
+                            <input
+                              type="hidden"
+                              name="studentId"
+                              value={enrollment.student.id}
+                            />
+
+                            {/* SELECT DE BIMESTRE (NOVO) */}
+                            <select
+                              name="term"
+                              className="w-full rounded-md border border-emerald-500/40 bg-slate-950/60 px-2 py-1 text-[11px] text-emerald-50 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                            >
+                              <option value="1">1º Bimestre</option>
+                              <option value="2">2º Bimestre</option>
+                              <option value="3">3º Bimestre</option>
+                              <option value="4">4º Bimestre</option>
+                            </select>
+
+                            <select
+                              name="subject"
+                              required
+                              className="w-full rounded-md border border-emerald-500/40 bg-slate-950/60 px-2 py-1 text-[11px] text-emerald-50 focus:border-emerald-400 focus:outline-none"
+                              defaultValue=""
+                            >
+                              <option value="" disabled>
+                                Selecione a matéria
+                              </option>
+                              {subjects.map((sub) => (
+                                <option
+                                  key={sub.id}
+                                  value={sub.id}
+                                  className="text-slate-900"
+                                >
+                                  {sub.name}
+                                </option>
+                              ))}
+                            </select>
+
+                            <input
+                              name="value"
+                              type="number"
+                              step="0.1"
+                              min={0}
+                              max={10}
+                              placeholder="Nota (0–10)"
+                              className="w-full rounded-md border border-emerald-500/40 bg-slate-950/60 px-2 py-1 text-[11px] text-emerald-50 placeholder:text-emerald-200/50 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                              required
+                            />
+
+                            <button
+                              type="submit"
+                              className="rounded-md bg-emerald-500 px-2 py-1 text-[11px] font-semibold text-slate-950 hover:bg-emerald-400"
+                            >
+                              Lançar nota
                             </button>
                           </form>
                         </td>
